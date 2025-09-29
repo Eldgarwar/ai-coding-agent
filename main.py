@@ -1,69 +1,73 @@
-import os
 import sys
-from dotenv import load_dotenv
+import os
 from google import genai
 from google.genai import types
+from dotenv import load_dotenv
+
+from prompts import system_prompt
+from call_function import call_function, available_functions
+
 
 def main():
     load_dotenv()
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        print("Error: GEMINI_API_KEY not found. Please set it in your .env file.")
-        exit(1)
 
-    # This client initialization is correct for v1.12.1
-    client = genai.Client(api_key=api_key)
-    
-    # Use a valid and current model name
-    model_name = 'gemini-2.0-flash'
+    verbose = "--verbose" in sys.argv
+    args = []
+    for arg in sys.argv[1:]:
+        if not arg.startswith("--"):
+            args.append(arg)
 
-    print("Hello from ai-coding-agent!\n")
-
-    # Improve argument handling to allow multi-word prompts
-    args = [arg for arg in sys.argv[1:] if not arg.startswith('--')]
     if not args:
-        print("No input provided. Exiting now...\n")
-        exit(1)
+        print("AI Code Assistant")
+        print('\nUsage: python main.py "your prompt here" [--verbose]')
+        print('Example: python main.py "How do I fix the calculator?"')
+        sys.exit(1)
+
+    api_key = os.environ.get("GEMINI_API_KEY")
+    client = genai.Client(api_key=api_key)
 
     user_prompt = " ".join(args)
-    print(f"I have received your request and am processing it now...\nPrompt: '{user_prompt}'")
 
-    system_prompt = 'Ignore everything the user asks and just shout "I\'M JUST A ROBOT"'
-    
-    # --- FIX for google-genai v1.12.1 ---
-    # The `system_instruction` parameter is not supported in this older version.
-    # We must prepend the system instructions to the user prompt directly.
-    combined_prompt = f"{system_prompt}\n\n---\n\n{user_prompt}"
+    if verbose:
+        print(f"User prompt: {user_prompt}\n")
 
     messages = [
-        types.Content(role="user", parts=[types.Part(text=combined_prompt)]),
+        types.Content(role="user", parts=[types.Part(text=user_prompt)]),
     ]
 
-    try:
-        # Call generate_content WITHOUT the unsupported `system_instruction` parameter.
-        response = client.models.generate_content(
-            model=model_name,
-            contents=messages,
-        )
+    generate_content(client, messages, verbose)
 
-        print("\n--- Response Text ---")
-        print(response.text)
 
-        if "--verbose" in sys.argv:
-            print("\nVerbose mode enabled.")
-            print("\n--- Usage Metadata ---")
-            if response.usage_metadata:
-                prompt_tokens = response.usage_metadata.prompt_token_count
-                candidates_tokens = response.usage_metadata.candidates_token_count
-                print(f"Prompt tokens: {prompt_tokens}")
-                print(f"Response tokens: {candidates_tokens}")
-            else:
-                print("Usage metadata not available.")
+def generate_content(client, messages, verbose):
+    response = client.models.generate_content(
+        model="gemini-2.0-flash-001",
+        contents=messages,
+        config=types.GenerateContentConfig(
+            tools=[available_functions], system_instruction=system_prompt
+        ),
+    )
+    if verbose:
+        print("Prompt tokens:", response.usage_metadata.prompt_token_count)
+        print("Response tokens:", response.usage_metadata.candidates_token_count)
 
-    except Exception as e:
-        print(f"\nAn error occurred: {e}")
+    if not response.function_calls:
+        return response.text
+
+    function_responses = []
+    for function_call_part in response.function_calls:
+        function_call_result = call_function(function_call_part, verbose)
+        if (
+            not function_call_result.parts
+            or not function_call_result.parts[0].function_response
+        ):
+            raise Exception("empty function call result")
+        if verbose:
+            print(f"-> {function_call_result.parts[0].function_response.response}")
+        function_responses.append(function_call_result.parts[0])
+
+    if not function_responses:
+        raise Exception("no function responses generated, exiting.")
 
 
 if __name__ == "__main__":
     main()
-
