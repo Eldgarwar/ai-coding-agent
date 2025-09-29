@@ -1,8 +1,9 @@
+
 import os
 import sys
-from dotenv import load_dotenv
+from dotenv import load_dotenv # pyright: ignore[reportMissingImports]
 from google import genai
-from google.genai import types
+from google.genai import types # pyright: ignore[reportMissingImports]
 
 def main():
     load_dotenv()
