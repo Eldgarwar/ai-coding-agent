@@ -1,6 +1,6 @@
 import os
 import subprocess
-from google.genai import types
+from google.genai import types# pyright: ignore[reportMissingImports] 
 
 
 def run_python_file(working_directory, file_path, args=None):

@@ -1,5 +1,5 @@
 import os
-from google.genai import types
+from google.genai import types # pyright: ignore[reportMissingImports] 
 
 
 def get_files_info(working_directory, directory="."):

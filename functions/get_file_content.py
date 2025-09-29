@@ -1,5 +1,5 @@
 import os
-from google.genai import types
+from google.genai import types # pyright: ignore[reportMissingImports] 
 from config import MAX_CHARS
 
 

@@ -1,4 +1,4 @@
-from google.genai import types
+from google.genai import types# pyright: ignore[reportMissingImports] 
 
 from functions.get_files_info import get_files_info, schema_get_files_info
 from functions.get_file_content import get_file_content, schema_get_file_content

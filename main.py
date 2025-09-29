@@ -1,8 +1,8 @@
 import sys
 import os
 from google import genai
-from google.genai import types
-from dotenv import load_dotenv
+from google.genai import types# pyright: ignore[reportMissingImports] 
+from dotenv import load_dotenv# pyright: ignore[reportMissingImports] 
 
 from prompts import system_prompt
 from call_function import call_function, available_functions
